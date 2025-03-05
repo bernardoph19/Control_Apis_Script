@@ -1188,7 +1188,11 @@ namespace CONTROL_APIS
                 {
                     try
                     {
-                        proceso.Kill();
+                        if (!proceso.HasExited)
+                        {
+                            proceso.Kill();
+                            proceso.WaitForExit(); // Esperar a que el proceso termine
+                        }
                         return true;
                     }
                     catch (Exception ex)
@@ -1197,18 +1201,21 @@ namespace CONTROL_APIS
                         return false;
                     }
                 }
-                // En caso de no encontrarlo en el diccionario, no se debería intentar buscar procesos alternativos.
+                // Si no se encontró el proceso en el diccionario, no se realiza ninguna acción adicional.
                 return false;
             }
             else
             {
-                // Lógica para detener APIs no script
                 bool procesoDetenido = false;
                 if (procesosAPIs.TryRemove(api.puerto.ToString(), out var proceso))
                 {
                     try
                     {
-                        proceso.Kill();
+                        if (!proceso.HasExited)
+                        {
+                            proceso.Kill();
+                            proceso.WaitForExit(); // Espera a que se cierre completamente
+                        }
                         procesoDetenido = true;
                     }
                     catch (Exception ex)
@@ -1216,11 +1223,10 @@ namespace CONTROL_APIS
                         Console.WriteLine($"Error al detener el proceso: {ex.Message}");
                     }
                 }
-                // Aquí podrías agregar un mecanismo de reintento o verificación extra,
-                // pero evita que se ejecuten múltiples comandos del sistema de forma innecesaria.
                 return procesoDetenido;
             }
         }
+
 
         private void close_Click(object sender, EventArgs e) => Application.Exit();
 
