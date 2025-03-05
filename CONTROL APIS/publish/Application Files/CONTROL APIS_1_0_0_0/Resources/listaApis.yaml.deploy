@@ -1,0 +1,64 @@
+﻿proyectos:
+  - nombre: PROYECTO 1
+    apis:
+      - endPoint: http://localhost:9000/
+        estado: Inactivo
+        puerto: 9000
+        RutaLocal: C:\Users\TED-BERNARDO\Desktop\BERNARDO\APIS-REST\api_fted_innovated_comercial
+        Tecnologia: Node.js
+        comandoInicio: '"C:\Program Files\nodejs\npm.cmd" run ts'
+      - endPoint: http://localhost:9001/
+        estado: Inactivo
+        puerto: 9001
+        RutaLocal: C:\Users\TED-BERNARDO\Desktop\BERNARDO\APIS-REST\api_fted_innovated_moda
+        Tecnologia: Node.js
+        comandoInicio: '"C:\Program Files\nodejs\npm.cmd" run ts'
+      - endPoint: http://localhost:9002/
+        estado: Inactivo
+        puerto: 9002
+        RutaLocal: C:\Users\TED-BERNARDO\Desktop\BERNARDO\APIS-REST\api_fted_transporte
+        Tecnologia: Node.js
+        comandoInicio: '"C:\Program Files\nodejs\npm.cmd" run ts'
+  - nombre: PROYECTO 2
+    apis:
+      - endPoint: http://localhost:9003/
+        estado: Inactivo
+        puerto: 9003
+        RutaLocal: C:\Users\TED-BERNARDO\Desktop\BERNARDO\APIS-REST\api_fted_carnes
+        Tecnologia: Node.js
+        comandoInicio: '"C:\Program Files\nodejs\npm.cmd" run ts'
+      - endPoint: http://localhost:9004/
+        estado: Inactivo
+        puerto: 9004
+        RutaLocal: C:\Users\TED-BERNARDO\Desktop\BERNARDO\APIS-REST\api_fted_comedor
+        Tecnologia: Node.js
+        comandoInicio: '"C:\Program Files\nodejs\npm.cmd" run ts'
+  - nombre: PROYECTO 3
+    apis:
+      - endPoint: http://localhost:9005/
+        estado: Inactivo
+        puerto: 9005
+        RutaLocal: C:\Users\TED-BERNARDO\Desktop\BERNARDO\APIS-REST\api_fted_restaurante
+        Tecnologia: Node.js
+        comandoInicio: '"C:\Program Files\nodejs\npm.cmd" run ts'
+      - endPoint: http://localhost:8000/hello/
+        estado: Inactivo
+        puerto: 8000
+        RutaLocal: C:\Users\TED-BERNARDO\Desktop\berApi
+        Tecnologia: Python
+        comandoInicio: 'python -m uvicorn app.main:app --reload --port 8000'
+
+  - nombre: PROYECTO 4
+    apis:
+      - endPoint: http://localhost:9005/
+        estado: Inactivo
+        puerto: 9005
+        RutaLocal: C:\Users\TED-BERNARDO\Desktop\BERNARDO\APIS-REST\api_fted_restaurante
+        Tecnologia: Node.js
+        comandoInicio: '"C:\Program Files\nodejs\npm.cmd" run ts'
+      - endPoint: http://localhost:8000/hello/
+        estado: Inactivo
+        puerto: 8000
+        RutaLocal: C:\Users\TED-BERNARDO\Desktop\berApi
+        Tecnologia: Python
+        comandoInicio: 'python -m uvicorn app.main:app --reload --port 8000'
