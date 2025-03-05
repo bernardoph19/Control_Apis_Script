@@ -14,16 +14,18 @@ using System.Drawing.Drawing2D;
 using YamlDotNet.Serialization;
 using System.Management;
 using System.Text;
+using System.Collections.Concurrent;
 
 namespace CONTROL_APIS
 {
     public partial class Form1 : Form {
 
-        private readonly Dictionary<string, Process> procesosAPIs = new Dictionary<string, Process>(); // Cambiado a string para manejar nombres de scripts
+        private readonly ConcurrentDictionary<string, Process> procesosAPIs = new ConcurrentDictionary<string, Process>();        // Cambiado a string para manejar nombres de scripts
         private readonly FormsTimer monitorTimer;
         private static readonly string botToken = "7786680952:AAG1epvu8kKvEeocyEDZDof9RLtOmjhNO4I"; // Token de tu bot      
         private static readonly string chatId = "880483483"; // ID del chat de destino
-
+        private bool isVerificando = false;
+        private System.Timers.Timer debounceTimer;
 
         public Form1() {
             InitializeComponent();
@@ -627,87 +629,147 @@ namespace CONTROL_APIS
             return null;
         }
 
+        //private async Task VerificarTodosLosEstados(bool primeraCarga = false)
+        //{
+        //    Form loadingForm = null;
+
+        //    // Mostrar el formulario de carga si es la primera vez
+        //    if (primeraCarga)
+        //    {
+        //        loadingForm = new Form
+        //        {
+        //            Text = "Verificando APIs...",
+        //            Size = new Size(300, 100),
+        //            StartPosition = FormStartPosition.CenterScreen,
+        //            FormBorderStyle = FormBorderStyle.FixedDialog,
+        //            ControlBox = false
+        //        };
+        //        var label = new Label
+        //        {
+        //            Text = "Cargando, por favor espere...",
+        //            Dock = DockStyle.Fill,
+        //            TextAlign = ContentAlignment.MiddleCenter
+        //        };
+        //        loadingForm.Controls.Add(label);
+        //        loadingForm.Show();
+        //    }
+
+
+        //    // Hacemos toda la verificación en un hilo en segundo plano
+
+        //    var resultados = await Task.Run(() =>
+        //    {
+        //        var estadosPorTab = new Dictionary<TabPage, Dictionary<ApisProyecto, bool>>();
+
+        //        foreach (TabPage tab in tabControl1.TabPages)
+        //        {
+        //            var panel = tab.Controls.OfType<Panel>().FirstOrDefault();
+        //            var dgv = panel?.Controls.OfType<DataGridView>().FirstOrDefault();
+        //            if (dgv?.DataSource is List<ApisProyecto> apis)
+        //            {
+        //                var resultadoApis = new Dictionary<ApisProyecto, bool>();
+        //                foreach (var api in apis)
+        //                {
+        //                    bool estadoActual = VerificarAPI(api).Result; // O usar .GetAwaiter().GetResult()
+        //                    resultadoApis[api] = estadoActual;
+        //                }
+        //                estadosPorTab[tab] = resultadoApis;
+        //            }
+        //        }
+        //        return estadosPorTab;
+        //    });
+
+        //    // 2) Una vez calculados los estados, actualizamos la UI *rápidamente*:
+        //    foreach (var kvpTab in resultados)
+        //    {
+        //        var tab = kvpTab.Key;
+        //        var panel = tab.Controls.OfType<Panel>().FirstOrDefault();
+        //        var dgv = panel?.Controls.OfType<DataGridView>().FirstOrDefault();
+
+        //        if (dgv?.DataSource is List<ApisProyecto> apis)
+        //        {
+        //            foreach (var apiEstado in kvpTab.Value)
+        //            {
+        //                var api = apiEstado.Key;
+        //                bool nuevoEstado = apiEstado.Value;
+        //                api.estado = nuevoEstado ? "Activo" : "Inactivo";
+        //            }
+        //            dgv.Invalidate(); // O InvalidateRow para cada fila
+        //        }
+
+        //        // Actualizar botón
+        //        var btn = panel?.Controls.OfType<Button>().FirstOrDefault();
+        //        if (btn != null)
+        //            await ActualizarEstadoBoton(btn, (List<ApisProyecto>)dgv.DataSource);
+
+        //        // Actualizar “tag” en la tab para dibujar el “circulito” verde/rojo
+        //        tab.Tag = ((List<ApisProyecto>)dgv.DataSource).All(a => a.estado == "Activo");
+        //    }
+
+        //    // Forzamos redibujado final
+        //    tabControl1.Invalidate();
+        //}
         private async Task VerificarTodosLosEstados(bool primeraCarga = false)
         {
-            Form loadingForm = null;
+            if (isVerificando) return; // Si ya se está verificando, salimos
+            isVerificando = true;
 
-            // Mostrar el formulario de carga si es la primera vez
-            if (primeraCarga)
+            try
             {
-                loadingForm = new Form
+                // Si es la primera carga, muestra el formulario de carga
+                Form loadingForm = null;
+                if (primeraCarga)
                 {
-                    Text = "Verificando APIs...",
-                    Size = new Size(300, 100),
-                    StartPosition = FormStartPosition.CenterScreen,
-                    FormBorderStyle = FormBorderStyle.FixedDialog,
-                    ControlBox = false
-                };
-                var label = new Label
-                {
-                    Text = "Cargando, por favor espere...",
-                    Dock = DockStyle.Fill,
-                    TextAlign = ContentAlignment.MiddleCenter
-                };
-                loadingForm.Controls.Add(label);
-                loadingForm.Show();
-            }
+                    loadingForm = new Form
+                    {
+                        Text = "Verificando APIs...",
+                        Size = new Size(300, 100),
+                        StartPosition = FormStartPosition.CenterScreen,
+                        FormBorderStyle = FormBorderStyle.FixedDialog,
+                        ControlBox = false
+                    };
+                    var label = new Label
+                    {
+                        Text = "Cargando, por favor espere...",
+                        Dock = DockStyle.Fill,
+                        TextAlign = ContentAlignment.MiddleCenter
+                    };
+                    loadingForm.Controls.Add(label);
+                    loadingForm.Show();
+                }
 
-            
-            // Hacemos toda la verificación en un hilo en segundo plano
-
-            var resultados = await Task.Run(() =>
-            {
-                var estadosPorTab = new Dictionary<TabPage, Dictionary<ApisProyecto, bool>>();
-
+                // Recorrer las pestañas y verificar cada API de forma asíncrona sin bloquear el hilo.
                 foreach (TabPage tab in tabControl1.TabPages)
                 {
                     var panel = tab.Controls.OfType<Panel>().FirstOrDefault();
                     var dgv = panel?.Controls.OfType<DataGridView>().FirstOrDefault();
                     if (dgv?.DataSource is List<ApisProyecto> apis)
                     {
-                        var resultadoApis = new Dictionary<ApisProyecto, bool>();
                         foreach (var api in apis)
                         {
-                            bool estadoActual = VerificarAPI(api).Result; // O usar .GetAwaiter().GetResult()
-                            resultadoApis[api] = estadoActual;
+                            // Evita usar .Result: en su lugar, espera la tarea
+                            bool estadoActual = await VerificarAPI(api);
+                            api.estado = estadoActual ? "Activo" : "Inactivo";
                         }
-                        estadosPorTab[tab] = resultadoApis;
+                        dgv.Invalidate();
                     }
-                }
-                return estadosPorTab;
-            });
 
-            // 2) Una vez calculados los estados, actualizamos la UI *rápidamente*:
-            foreach (var kvpTab in resultados)
-            {
-                var tab = kvpTab.Key;
-                var panel = tab.Controls.OfType<Panel>().FirstOrDefault();
-                var dgv = panel?.Controls.OfType<DataGridView>().FirstOrDefault();
-
-                if (dgv?.DataSource is List<ApisProyecto> apis)
-                {
-                    foreach (var apiEstado in kvpTab.Value)
-                    {
-                        var api = apiEstado.Key;
-                        bool nuevoEstado = apiEstado.Value;
-                        api.estado = nuevoEstado ? "Activo" : "Inactivo";
-                    }
-                    dgv.Invalidate(); // O InvalidateRow para cada fila
+                    // Actualiza el botón y el indicador visual de la pestaña
+                    var btn = panel?.Controls.OfType<Button>().FirstOrDefault();
+                    if (btn != null)
+                        await ActualizarEstadoBoton(btn, (List<ApisProyecto>)dgv.DataSource);
+                    tab.Tag = ((List<ApisProyecto>)dgv.DataSource).All(a => a.estado == "Activo");
                 }
 
-                // Actualizar botón
-                var btn = panel?.Controls.OfType<Button>().FirstOrDefault();
-                if (btn != null)
-                    await ActualizarEstadoBoton(btn, (List<ApisProyecto>)dgv.DataSource);
-
-                // Actualizar “tag” en la tab para dibujar el “circulito” verde/rojo
-                tab.Tag = ((List<ApisProyecto>)dgv.DataSource).All(a => a.estado == "Activo");
+                tabControl1.Invalidate();
+                if (primeraCarga && loadingForm != null)
+                    loadingForm.Close();
             }
-
-            // Forzamos redibujado final
-            tabControl1.Invalidate();
+            finally
+            {
+                isVerificando = false;
+            }
         }
-
         private async Task<bool> VerificarAPI(ApisProyecto api)
         {
             bool procesoActivo = false;
@@ -969,16 +1031,164 @@ namespace CONTROL_APIS
                 : (parts[0], string.Join(" ", parts.Skip(1)));
         }
 
+        //private async Task<bool> DetenerAPI(ApisProyecto api)
+        //{
+        //    if (api.EsScript)
+        //    {
+        //        if (procesosAPIs.TryGetValue(api.Nombre, out var proceso))
+        //        {
+        //            try
+        //            {
+        //                proceso.Kill();
+        //                procesosAPIs.Remove(api.Nombre);
+        //                return true;
+        //            }
+        //            catch (Exception ex)
+        //            {
+        //                Console.WriteLine($"Error al detener el script: {ex.Message}");
+        //                return false;
+        //            }
+        //        }
+
+        //        // Buscar el proceso manualmente por nombre
+        //        var procesos = Process.GetProcessesByName("node");
+        //        foreach (var p in procesos)
+        //        {
+        //            try
+        //            {
+        //                string cmdLine = File.ReadAllText($"/proc/{p.Id}/cmdline");
+        //                if (cmdLine.Contains("ts-node") && cmdLine.Contains(api.comandoInicio))
+        //                {
+        //                    p.Kill();
+        //                    return true;
+        //                }
+        //            }
+        //            catch { continue; }
+        //        }
+
+        //        return false;
+        //    }
+        //    else
+        //    {
+        //        // Lógica existente para detener APIs
+        //        bool procesoDetenido = false;
+
+        //        if (procesosAPIs.TryGetValue(api.puerto.ToString(), out var proceso))
+        //        {
+        //            try
+        //            {
+        //                proceso.Kill();
+        //                procesosAPIs.Remove(api.puerto.ToString());
+        //                procesoDetenido = true;
+        //            }
+        //            catch (Exception ex)
+        //            {
+        //                Console.WriteLine($"Error al detener el proceso: {ex.Message}");
+        //            }
+        //        }
+
+        //        if (!procesoDetenido)
+        //        {
+
+
+        //            if (!procesoDetenido)
+        //            {
+        //                try
+        //                {
+        //                    string argumentosNetstat = $"-ano | findstr :{api.puerto}";
+        //                    ProcessStartInfo psiNetstat = new ProcessStartInfo("cmd.exe", "/c netstat " + argumentosNetstat)
+        //                    {
+        //                        RedirectStandardOutput = true,
+        //                        UseShellExecute = false,
+        //                        CreateNoWindow = true
+        //                    };
+
+        //                    using (Process procesoNetstat = Process.Start(psiNetstat))
+        //                    {
+        //                        string salidaNetstat = await procesoNetstat.StandardOutput.ReadToEndAsync();
+        //                        procesoNetstat.WaitForExit();
+
+        //                        string[] lineas = salidaNetstat.Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
+        //                        foreach (string linea in lineas)
+        //                        {
+        //                            if (linea.Contains("LISTENING"))
+        //                            {
+        //                                string[] partes = linea.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+        //                                string pid = partes[partes.Length - 1];
+
+        //                                ProcessStartInfo psiKill = new ProcessStartInfo("taskkill", $"/PID {pid} /F /T")
+        //                                {
+        //                                    RedirectStandardOutput = true,
+        //                                    UseShellExecute = false,
+        //                                    CreateNoWindow = true
+        //                                };
+
+        //                                using (Process procesoKill = Process.Start(psiKill))
+        //                                {
+        //                                    await procesoKill.StandardOutput.ReadToEndAsync();
+        //                                    procesoKill.WaitForExit();
+        //                                    procesoDetenido = true;
+        //                                }
+
+        //                                if (api.Tecnologia == "Python")
+        //                                {
+        //                                    string argumentosUvicorn = $"/c wmic process where (ParentProcessId={pid}) get ProcessId";
+        //                                    ProcessStartInfo psiUvicorn = new ProcessStartInfo("cmd.exe", argumentosUvicorn)
+        //                                    {
+        //                                        RedirectStandardOutput = true,
+        //                                        UseShellExecute = false,
+        //                                        CreateNoWindow = true
+        //                                    };
+
+        //                                    using (Process procesoUvicorn = Process.Start(psiUvicorn))
+        //                                    {
+        //                                        string salidaUvicorn = await procesoUvicorn.StandardOutput.ReadToEndAsync();
+        //                                        procesoUvicorn.WaitForExit();
+
+        //                                        string[] pidsUvicorn = salidaUvicorn.Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
+        //                                        foreach (string pidUvicorn in pidsUvicorn)
+        //                                        {
+        //                                            if (int.TryParse(pidUvicorn, out int pidHijo))
+        //                                            {
+        //                                                ProcessStartInfo psiKillHijo = new ProcessStartInfo("taskkill", $"/PID {pidHijo} /F")
+        //                                                {
+        //                                                    RedirectStandardOutput = true,
+        //                                                    UseShellExecute = false,
+        //                                                    CreateNoWindow = true
+        //                                                };
+
+        //                                                using (Process procesoKillHijo = Process.Start(psiKillHijo))
+        //                                                {
+        //                                                    await procesoKillHijo.StandardOutput.ReadToEndAsync();
+        //                                                    procesoKillHijo.WaitForExit();
+        //                                                }
+        //                                            }
+        //                                        }
+        //                                    }
+        //                                }
+        //                            }
+        //                        }
+        //                    }
+        //                }
+        //                catch (Exception ex)
+        //                {
+        //                    Console.WriteLine($"Error inesperado: {ex.Message}");
+        //                }
+        //            }
+        //        }
+
+        //        return procesoDetenido;
+        //    }
+        //}
         private async Task<bool> DetenerAPI(ApisProyecto api)
         {
             if (api.EsScript)
             {
-                if (procesosAPIs.TryGetValue(api.Nombre, out var proceso))
+                if (procesosAPIs.TryRemove(api.Nombre, out var proceso))
                 {
                     try
                     {
                         proceso.Kill();
-                        procesosAPIs.Remove(api.Nombre);
                         return true;
                     }
                     catch (Exception ex)
@@ -987,36 +1197,18 @@ namespace CONTROL_APIS
                         return false;
                     }
                 }
-
-                // Buscar el proceso manualmente por nombre
-                var procesos = Process.GetProcessesByName("node");
-                foreach (var p in procesos)
-                {
-                    try
-                    {
-                        string cmdLine = File.ReadAllText($"/proc/{p.Id}/cmdline");
-                        if (cmdLine.Contains("ts-node") && cmdLine.Contains(api.comandoInicio))
-                        {
-                            p.Kill();
-                            return true;
-                        }
-                    }
-                    catch { continue; }
-                }
-
+                // En caso de no encontrarlo en el diccionario, no se debería intentar buscar procesos alternativos.
                 return false;
             }
             else
             {
-                // Lógica existente para detener APIs
+                // Lógica para detener APIs no script
                 bool procesoDetenido = false;
-
-                if (procesosAPIs.TryGetValue(api.puerto.ToString(), out var proceso))
+                if (procesosAPIs.TryRemove(api.puerto.ToString(), out var proceso))
                 {
                     try
                     {
                         proceso.Kill();
-                        procesosAPIs.Remove(api.puerto.ToString());
                         procesoDetenido = true;
                     }
                     catch (Exception ex)
@@ -1024,97 +1216,8 @@ namespace CONTROL_APIS
                         Console.WriteLine($"Error al detener el proceso: {ex.Message}");
                     }
                 }
-
-                if (!procesoDetenido)
-                {
-                   
-
-                    if (!procesoDetenido)
-                    {
-                        try
-                        {
-                            string argumentosNetstat = $"-ano | findstr :{api.puerto}";
-                            ProcessStartInfo psiNetstat = new ProcessStartInfo("cmd.exe", "/c netstat " + argumentosNetstat)
-                            {
-                                RedirectStandardOutput = true,
-                                UseShellExecute = false,
-                                CreateNoWindow = true
-                            };
-
-                            using (Process procesoNetstat = Process.Start(psiNetstat))
-                            {
-                                string salidaNetstat = await procesoNetstat.StandardOutput.ReadToEndAsync();
-                                procesoNetstat.WaitForExit();
-
-                                string[] lineas = salidaNetstat.Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
-                                foreach (string linea in lineas)
-                                {
-                                    if (linea.Contains("LISTENING"))
-                                    {
-                                        string[] partes = linea.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-                                        string pid = partes[partes.Length - 1];
-
-                                        ProcessStartInfo psiKill = new ProcessStartInfo("taskkill", $"/PID {pid} /F /T")
-                                        {
-                                            RedirectStandardOutput = true,
-                                            UseShellExecute = false,
-                                            CreateNoWindow = true
-                                        };
-
-                                        using (Process procesoKill = Process.Start(psiKill))
-                                        {
-                                            await procesoKill.StandardOutput.ReadToEndAsync();
-                                            procesoKill.WaitForExit();
-                                            procesoDetenido = true;
-                                        }
-
-                                        if (api.Tecnologia == "Python")
-                                        {
-                                            string argumentosUvicorn = $"/c wmic process where (ParentProcessId={pid}) get ProcessId";
-                                            ProcessStartInfo psiUvicorn = new ProcessStartInfo("cmd.exe", argumentosUvicorn)
-                                            {
-                                                RedirectStandardOutput = true,
-                                                UseShellExecute = false,
-                                                CreateNoWindow = true
-                                            };
-
-                                            using (Process procesoUvicorn = Process.Start(psiUvicorn))
-                                            {
-                                                string salidaUvicorn = await procesoUvicorn.StandardOutput.ReadToEndAsync();
-                                                procesoUvicorn.WaitForExit();
-
-                                                string[] pidsUvicorn = salidaUvicorn.Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
-                                                foreach (string pidUvicorn in pidsUvicorn)
-                                                {
-                                                    if (int.TryParse(pidUvicorn, out int pidHijo))
-                                                    {
-                                                        ProcessStartInfo psiKillHijo = new ProcessStartInfo("taskkill", $"/PID {pidHijo} /F")
-                                                        {
-                                                            RedirectStandardOutput = true,
-                                                            UseShellExecute = false,
-                                                            CreateNoWindow = true
-                                                        };
-
-                                                        using (Process procesoKillHijo = Process.Start(psiKillHijo))
-                                                        {
-                                                            await procesoKillHijo.StandardOutput.ReadToEndAsync();
-                                                            procesoKillHijo.WaitForExit();
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine($"Error inesperado: {ex.Message}");
-                        }
-                    }
-                }
-
+                // Aquí podrías agregar un mecanismo de reintento o verificación extra,
+                // pero evita que se ejecuten múltiples comandos del sistema de forma innecesaria.
                 return procesoDetenido;
             }
         }
@@ -1183,6 +1286,36 @@ namespace CONTROL_APIS
 
 
         private FileSystemWatcher yamlWatcher;
+        //private void SetupYamlFileWatcher()
+        //{
+        //    string exePath = AppDomain.CurrentDomain.BaseDirectory;
+        //    string resourcesPath = Path.Combine(exePath, "Resources");
+
+        //    yamlWatcher = new FileSystemWatcher(resourcesPath, "listaApis.yaml")
+        //    {
+        //        NotifyFilter = NotifyFilters.LastWrite
+        //    };
+
+        //    yamlWatcher.Changed += (s, e) =>
+        //    {
+        //        // Espera breve para evitar múltiples triggers
+        //        System.Threading.Thread.Sleep(100);
+        //        this.Invoke(new Action(() =>
+        //        {
+        //            // Leer nuevamente el YAML
+        //            var nuevosProyectos = ObtenerProyectos();
+
+        //            // Vaciar y reconstruir el TabControl
+        //            tabControl1.TabPages.Clear();
+        //            CargarProyectosInicial(nuevosProyectos);
+
+        //            // Opcional: forzar una verificación de estados
+        //            VerificarTodosLosEstados().ConfigureAwait(false);
+        //        }));
+        //    };
+
+        //    yamlWatcher.EnableRaisingEvents = true;
+        //}
         private void SetupYamlFileWatcher()
         {
             string exePath = AppDomain.CurrentDomain.BaseDirectory;
@@ -1195,25 +1328,25 @@ namespace CONTROL_APIS
 
             yamlWatcher.Changed += (s, e) =>
             {
-                // Espera breve para evitar múltiples triggers
-                System.Threading.Thread.Sleep(100);
-                this.Invoke(new Action(() =>
+                // Reinicia el temporizador cada vez que se detecta un cambio
+                debounceTimer?.Stop();
+                debounceTimer = new System.Timers.Timer(500); // 500 ms de espera
+                debounceTimer.Elapsed += (sender, args) =>
                 {
-                    // Leer nuevamente el YAML
-                    var nuevosProyectos = ObtenerProyectos();
-
-                    // Vaciar y reconstruir el TabControl
-                    tabControl1.TabPages.Clear();
-                    CargarProyectosInicial(nuevosProyectos);
-
-                    // Opcional: forzar una verificación de estados
-                    VerificarTodosLosEstados().ConfigureAwait(false);
-                }));
+                    debounceTimer.Stop();
+                    this.Invoke(new Action(() =>
+                    {
+                        var nuevosProyectos = ObtenerProyectos();
+                        tabControl1.TabPages.Clear();
+                        CargarProyectosInicial(nuevosProyectos);
+                        VerificarTodosLosEstados().ConfigureAwait(false);
+                    }));
+                };
+                debounceTimer.Start();
             };
 
             yamlWatcher.EnableRaisingEvents = true;
         }
-
         private void listayaml_Click(object sender, EventArgs e)
         {
             // Ruta completa del archivo YAML
@@ -1241,12 +1374,10 @@ namespace CONTROL_APIS
         {
 
         }
+
+        private void listayaml_Click_1(object sender, EventArgs e)
+        {
+
+        }
     }
-
-
-
 }
-
-
-
-
