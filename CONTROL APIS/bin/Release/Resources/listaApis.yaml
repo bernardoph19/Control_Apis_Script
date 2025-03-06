@@ -1,0 +1,48 @@
+﻿proyectos:
+  - nombre: Proyecto 1
+    apis:
+      - endPoint: http://localhost:9000/
+        estado: Inactivo
+        puerto: 9000
+        RutaLocal: C:\Users\TED-BERNARDO\Desktop\BERNARDO\APIS-REST\api_fted_innovated_comercial
+        Tecnologia: Node.js
+        comandoInicio: '"C:\Program Files\nodejs\npm.cmd" run ts'
+        EsScript: false
+      - endPoint: http://localhost:9001/
+        estado: Inactivo
+        puerto: 9001
+        RutaLocal: C:\Users\TED-BERNARDO\Desktop\BERNARDO\APIS-REST\api_fted_innovated_moda
+        Tecnologia: Node.js
+        comandoInicio: '"C:\Program Files\nodejs\npm.cmd" run ts'
+        EsScript: false
+      - endPoint: http://localhost:9002/
+        estado: Inactivo
+        Nombre: Factuted Transporte
+        puerto: 9002
+        RutaLocal: C:\Users\TED-BERNARDO\Desktop\BERNARDO\APIS-REST\api_fted_transporte
+        Tecnologia: Node.js
+        comandoInicio: '"C:\Program Files\nodejs\npm.cmd" run ts'
+        EsScript: false
+      - endPoint: http://localhost:3009/health
+        estado: Inactivo
+        Nombre: cobranzas Innovated
+        puerto: 3009
+        RutaLocal: C:\Users\TED-BERNARDO\Desktop\pagosinnovated
+        Tecnologia: Node.js
+        comandoInicio: '"C:\Program Files\nodejs\npm.cmd" start'
+        EsScript: false
+    
+  - nombre: Proyecto 2
+    apis:
+      - Nombre: Script de Tiempo
+        estado: Inactivo
+        RutaLocal: C:\Users\TED-BERNARDO\Desktop\script
+        Tecnologia: Python
+        comandoInicio: 'python pruebas.py'
+        EsScript: true
+      - Nombre: Dismar-Polphins-Lider
+        estado: Inactivo
+        RutaLocal: C:\Users\TED-BERNARDO\Downloads\saludoBer\app
+        Tecnologia: TypeScript
+        comandoInicio: 'npx ts-node saludo.ts'
+        EsScript: true
