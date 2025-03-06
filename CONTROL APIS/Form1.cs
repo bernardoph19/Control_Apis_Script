@@ -1031,200 +1031,135 @@ namespace CONTROL_APIS
                 : (parts[0], string.Join(" ", parts.Skip(1)));
         }
 
-        //private async Task<bool> DetenerAPI(ApisProyecto api)
-        //{
-        //    if (api.EsScript)
-        //    {
-        //        if (procesosAPIs.TryGetValue(api.Nombre, out var proceso))
-        //        {
-        //            try
-        //            {
-        //                proceso.Kill();
-        //                procesosAPIs.Remove(api.Nombre);
-        //                return true;
-        //            }
-        //            catch (Exception ex)
-        //            {
-        //                Console.WriteLine($"Error al detener el script: {ex.Message}");
-        //                return false;
-        //            }
-        //        }
-
-        //        // Buscar el proceso manualmente por nombre
-        //        var procesos = Process.GetProcessesByName("node");
-        //        foreach (var p in procesos)
-        //        {
-        //            try
-        //            {
-        //                string cmdLine = File.ReadAllText($"/proc/{p.Id}/cmdline");
-        //                if (cmdLine.Contains("ts-node") && cmdLine.Contains(api.comandoInicio))
-        //                {
-        //                    p.Kill();
-        //                    return true;
-        //                }
-        //            }
-        //            catch { continue; }
-        //        }
-
-        //        return false;
-        //    }
-        //    else
-        //    {
-        //        // Lógica existente para detener APIs
-        //        bool procesoDetenido = false;
-
-        //        if (procesosAPIs.TryGetValue(api.puerto.ToString(), out var proceso))
-        //        {
-        //            try
-        //            {
-        //                proceso.Kill();
-        //                procesosAPIs.Remove(api.puerto.ToString());
-        //                procesoDetenido = true;
-        //            }
-        //            catch (Exception ex)
-        //            {
-        //                Console.WriteLine($"Error al detener el proceso: {ex.Message}");
-        //            }
-        //        }
-
-        //        if (!procesoDetenido)
-        //        {
-
-
-        //            if (!procesoDetenido)
-        //            {
-        //                try
-        //                {
-        //                    string argumentosNetstat = $"-ano | findstr :{api.puerto}";
-        //                    ProcessStartInfo psiNetstat = new ProcessStartInfo("cmd.exe", "/c netstat " + argumentosNetstat)
-        //                    {
-        //                        RedirectStandardOutput = true,
-        //                        UseShellExecute = false,
-        //                        CreateNoWindow = true
-        //                    };
-
-        //                    using (Process procesoNetstat = Process.Start(psiNetstat))
-        //                    {
-        //                        string salidaNetstat = await procesoNetstat.StandardOutput.ReadToEndAsync();
-        //                        procesoNetstat.WaitForExit();
-
-        //                        string[] lineas = salidaNetstat.Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
-        //                        foreach (string linea in lineas)
-        //                        {
-        //                            if (linea.Contains("LISTENING"))
-        //                            {
-        //                                string[] partes = linea.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-        //                                string pid = partes[partes.Length - 1];
-
-        //                                ProcessStartInfo psiKill = new ProcessStartInfo("taskkill", $"/PID {pid} /F /T")
-        //                                {
-        //                                    RedirectStandardOutput = true,
-        //                                    UseShellExecute = false,
-        //                                    CreateNoWindow = true
-        //                                };
-
-        //                                using (Process procesoKill = Process.Start(psiKill))
-        //                                {
-        //                                    await procesoKill.StandardOutput.ReadToEndAsync();
-        //                                    procesoKill.WaitForExit();
-        //                                    procesoDetenido = true;
-        //                                }
-
-        //                                if (api.Tecnologia == "Python")
-        //                                {
-        //                                    string argumentosUvicorn = $"/c wmic process where (ParentProcessId={pid}) get ProcessId";
-        //                                    ProcessStartInfo psiUvicorn = new ProcessStartInfo("cmd.exe", argumentosUvicorn)
-        //                                    {
-        //                                        RedirectStandardOutput = true,
-        //                                        UseShellExecute = false,
-        //                                        CreateNoWindow = true
-        //                                    };
-
-        //                                    using (Process procesoUvicorn = Process.Start(psiUvicorn))
-        //                                    {
-        //                                        string salidaUvicorn = await procesoUvicorn.StandardOutput.ReadToEndAsync();
-        //                                        procesoUvicorn.WaitForExit();
-
-        //                                        string[] pidsUvicorn = salidaUvicorn.Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
-        //                                        foreach (string pidUvicorn in pidsUvicorn)
-        //                                        {
-        //                                            if (int.TryParse(pidUvicorn, out int pidHijo))
-        //                                            {
-        //                                                ProcessStartInfo psiKillHijo = new ProcessStartInfo("taskkill", $"/PID {pidHijo} /F")
-        //                                                {
-        //                                                    RedirectStandardOutput = true,
-        //                                                    UseShellExecute = false,
-        //                                                    CreateNoWindow = true
-        //                                                };
-
-        //                                                using (Process procesoKillHijo = Process.Start(psiKillHijo))
-        //                                                {
-        //                                                    await procesoKillHijo.StandardOutput.ReadToEndAsync();
-        //                                                    procesoKillHijo.WaitForExit();
-        //                                                }
-        //                                            }
-        //                                        }
-        //                                    }
-        //                                }
-        //                            }
-        //                        }
-        //                    }
-        //                }
-        //                catch (Exception ex)
-        //                {
-        //                    Console.WriteLine($"Error inesperado: {ex.Message}");
-        //                }
-        //            }
-        //        }
-
-        //        return procesoDetenido;
-        //    }
-        //}
+      
         private async Task<bool> DetenerAPI(ApisProyecto api)
         {
-            if (api.EsScript)
+            return await Task.Run(async () =>
             {
-                if (procesosAPIs.TryRemove(api.Nombre, out var proceso))
+                try
                 {
-                    try
+                    string claveProceso = api.EsScript ? api.Nombre : api.puerto.ToString();
+                    bool procesoDetenido = false;
+
+                    // 1. Detener proceso desde el diccionario
+                    if (procesosAPIs.TryRemove(claveProceso, out var proceso) && proceso != null && !proceso.HasExited)
                     {
-                        if (!proceso.HasExited)
-                        {
-                            proceso.Kill();
-                            proceso.WaitForExit(); // Esperar a que el proceso termine
-                        }
-                        return true;
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Error al detener el script: {ex.Message}");
-                        return false;
-                    }
-                }
-                // Si no se encontró el proceso en el diccionario, no se realiza ninguna acción adicional.
-                return false;
-            }
-            else
-            {
-                bool procesoDetenido = false;
-                if (procesosAPIs.TryRemove(api.puerto.ToString(), out var proceso))
-                {
-                    try
-                    {
-                        if (!proceso.HasExited)
-                        {
-                            proceso.Kill();
-                            proceso.WaitForExit(); // Espera a que se cierre completamente
-                        }
+                        proceso.Kill();
+                        await Task.Delay(500); // Pequeña espera para asegurar la finalización
                         procesoDetenido = true;
                     }
-                    catch (Exception ex)
+
+                    // 2. Buscar y detener procesos relacionados
+                    foreach (var proc in Process.GetProcessesByName(api.Nombre))
                     {
-                        Console.WriteLine($"Error al detener el proceso: {ex.Message}");
+                        try
+                        {
+                            if (!proc.HasExited)
+                            {
+                                proc.Kill();
+                                await Task.Delay(500);
+                                procesoDetenido = true;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Error al detener proceso secundario {proc.ProcessName}: {ex.Message}");
+                        }
                     }
+
+                    // 3. Si no se encontró en procesosAPIs, buscar por puerto (para APIs en ejecución)
+                    if (!procesoDetenido && !api.EsScript)
+                    {
+                        try
+                        {
+                            string argumentosNetstat = $"-ano | findstr :{api.puerto}";
+                            ProcessStartInfo psiNetstat = new ProcessStartInfo("cmd.exe", "/c netstat " + argumentosNetstat)
+                            {
+                                RedirectStandardOutput = true,
+                                UseShellExecute = false,
+                                CreateNoWindow = true
+                            };
+
+                            using (Process procesoNetstat = Process.Start(psiNetstat))
+                            {
+                                string salidaNetstat = await procesoNetstat.StandardOutput.ReadToEndAsync();
+                                procesoNetstat.WaitForExit();
+
+                                foreach (string linea in salidaNetstat.Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries))
+                                {
+                                    if (linea.Contains("LISTENING"))
+                                    {
+                                        string[] partes = linea.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                                        string pid = partes.Last();
+
+                                        // 4. Forzar cierre del proceso por PID
+                                        ProcessStartInfo psiKill = new ProcessStartInfo("taskkill", $"/PID {pid} /F /T")
+                                        {
+                                            RedirectStandardOutput = true,
+                                            UseShellExecute = false,
+                                            CreateNoWindow = true
+                                        };
+
+                                        using (Process procesoKill = Process.Start(psiKill))
+                                        {
+                                            await procesoKill.StandardOutput.ReadToEndAsync();
+                                            procesoKill.WaitForExit();
+                                            procesoDetenido = true;
+                                        }
+
+                                        // 5. Si es Python, matar procesos hijos (ejemplo: Uvicorn, Flask)
+                                        if (api.Tecnologia == "Python")
+                                        {
+                                            ProcessStartInfo psiUvicorn = new ProcessStartInfo("cmd.exe", $"/c wmic process where (ParentProcessId={pid}) get ProcessId")
+                                            {
+                                                RedirectStandardOutput = true,
+                                                UseShellExecute = false,
+                                                CreateNoWindow = true
+                                            };
+
+                                            using (Process procesoUvicorn = Process.Start(psiUvicorn))
+                                            {
+                                                string salidaUvicorn = await procesoUvicorn.StandardOutput.ReadToEndAsync();
+                                                procesoUvicorn.WaitForExit();
+
+                                                foreach (string pidHijo in salidaUvicorn.Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries))
+                                                {
+                                                    if (int.TryParse(pidHijo, out int pidHijoNum))
+                                                    {
+                                                        ProcessStartInfo psiKillHijo = new ProcessStartInfo("taskkill", $"/PID {pidHijoNum} /F")
+                                                        {
+                                                            RedirectStandardOutput = true,
+                                                            UseShellExecute = false,
+                                                            CreateNoWindow = true
+                                                        };
+
+                                                        using (Process procesoKillHijo = Process.Start(psiKillHijo))
+                                                        {
+                                                            await procesoKillHijo.StandardOutput.ReadToEndAsync();
+                                                            procesoKillHijo.WaitForExit();
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Error inesperado: {ex.Message}");
+                        }
+                    }
+
+                    return procesoDetenido;
                 }
-                return procesoDetenido;
-            }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error al detener la API '{api.Nombre}': {ex.Message}\n{ex.StackTrace}");
+                    return false;
+                }
+            });
         }
 
 
