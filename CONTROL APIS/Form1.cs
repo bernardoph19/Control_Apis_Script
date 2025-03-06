@@ -49,9 +49,7 @@ namespace CONTROL_APIS
             SetupYamlFileWatcher();            
         }
 
-        public static async Task SendMessageAsync(string message)
-        {
-
+        public static async Task SendMessageAsync(string message) {  
             using (var client = new HttpClient())
             {
                 // Construir la URL de la API
@@ -1032,8 +1030,7 @@ namespace CONTROL_APIS
         }
 
       
-        private async Task<bool> DetenerAPI(ApisProyecto api)
-        {
+        private async Task<bool> DetenerAPI(ApisProyecto api)  {
             return await Task.Run(async () =>
             {
                 try
